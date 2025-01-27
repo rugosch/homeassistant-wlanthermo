@@ -8,8 +8,10 @@ Link your WLANThermo to the same MQTT server which Home Assistant is using. You 
 
 ## Home Assistant Configuration
 
+### Update to new template integration (no more legacy templates)
+
 ### Sensor
-First we add a sensor containing all information, battery status as master value. We force it to expire after 1 minute of no new MQTT message, which leads Home Assistant to set the status to `Unknown`.
+First we add a sensor containing all information.
 
 Adjust your MQTT topic appropriately, so change the topic prefix `WLanThermo/NANO-2a21b5` to your modelname.
 
@@ -29,72 +31,41 @@ mqtt:
       expire_after: 60
 
 # Template sensor per channel
-sensor:
-- platform: template
-  sensors:
-    # Wifi signal strength
-    wlanthermo_signal_strength:
-      value_template: "{{ state_attr('sensor.wlanthermo', 'system')['rssi'] }}"
-      unit_of_measurement: "dBm"
-      friendly_name: "WLANThermo signal strength"
-      device_class: signal_strength
-      entity_id: sensor.wlanthermo
+template:
+  - sensor:
+    # wlanthermo WIFI
+      - name: "WLANThermo Signalstärke"
+        unique_id: "wlanthermo_signalstaerke"
+        state: "{{ state_attr('sensor.wlanthermo', 'system')['rssi'] }}"
+        availability: "{{ has_value('sensor.wlanthermo') }}"
+        unit_of_measurement: "dBm"
+        device_class: signal_strength
 
-    # Channel 1
-    wlanthermo_channel_1_all:
-      value_template: "{{ state_attr('sensor.wlanthermo', 'channel')[0] }}"
-      entity_id: sensor.wlanthermo
-    wlanthermo_channel_1:
-      friendly_name_template: >
-          {% if not is_state('sensor.wlanthermo', 'unknown') %}
-          {{ state_attr('sensor.wlanthermo', 'channel')[0]['name'] }}
-          {% else %}
-          Channel 1
-          {% endif %}
-      # set to zero if wlanthermo is turned off or channel not plugged in
-      value_template: >
-          {% if not is_state('sensor.wlanthermo', 'unknown') %}
-          {% set temp = state_attr('sensor.wlanthermo', 'channel')[0]['temp'] %}
-          {% if temp >= -30 and temp <= 300 %}
-          {{ temp }}
-          {% else %}
-          0
-          {% endif %}
-          {% else %}
-          0
-          {% endif %}
-      unit_of_measurement: "°C"
-      device_class: temperature
-      entity_id: sensor.wlanthermo
+    # wlanthermo Channel 1
+      - name: "BBQ Kanal 1"
+        unique_id: 'wlanthermo_channel_1_all'
+        state: "{{ state_attr('sensor.wlanthermo', 'channel')[0] }}"
+        availability: "{{ has_value('sensor.wlanthermo') }}"
+        
+      - name: "BBQ Kanal 1 Temperatur"
+        unique_id: 'wlanthermo_channel_1_temp'
+        state: "{{ state_attr('sensor.wlanthermo', 'channel')[0]['temp'] }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
 
-    # Channel 2
-    wlanthermo_channel_2_all:
-      value_template: "{{ state_attr('sensor.wlanthermo', 'channel')[1] }}"
-      entity_id: sensor.wlanthermo
-    wlanthermo_channel_2:
-      friendly_name_template: >
-          {% if not is_state('sensor.wlanthermo', 'unknown') %}
-          {{ state_attr('sensor.wlanthermo', 'channel')[1]['name'] }}
-          {% else %}
-          Channel 1
-          {% endif %}
-      # set to zero if wlanthermo is turned off or channel not plugged in
-      value_template: >
-          {% if not is_state('sensor.wlanthermo', 'unknown') %}
-          {% set temp = state_attr('sensor.wlanthermo', 'channel')[1]['temp'] %}
-          {% if temp >= -30 and temp <= 300 %}
-          {{ temp }}
-          {% else %}
-          0
-          {% endif %}
-          {% else %}
-          0
-          {% endif %}
-      unit_of_measurement: "°C"
-      device_class: temperature
-      entity_id: sensor.wlanthermo
+    # wlanthermo Channel 2
+      - name: "BBQ Kanal 2"
+        unique_id: 'wlanthermo_channel_2_all'
+        state: "{{ state_attr('sensor.wlanthermo', 'channel')[1] }}"
+        availability: "{{ has_value('sensor.wlanthermo') }}"
+        
+      - name: "BBQ Kanal 2 Temperatur"
+        unique_id: 'wlanthermo_channel_2_temp'
+        state: "{{ state_attr('sensor.wlanthermo', 'channel')[1]['temp'] }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
 
-      # add further channels here...
+    # add further channels here...
 ```
 
 
@@ -229,66 +200,66 @@ In the automations you have to define how to set the defined input_number elemen
 
 ### Lovelace configuration
 ![Screenshot Lovelace UI WLANThermo](/screenshot.png?raw=true "WLANThermo Lovelace")
-
+We add a seperate View for this:
 ```yaml
-  - title: Thermometer
-    icon: 'mdi:pig'
-    cards:
-      - type: entities
-        entities:
-          - entity: sensor.wlanthermo
-      - type: conditional
-        conditions:
-          - entity: sensor.wlanthermo_channel_1
-            state_not: unavailable
-          - entity: sensor.wlanthermo_channel_2
-            state_not: unavailable
-        card:
-          - type: history-graph
-            title: Temperaturverlauf
-            entities:
-              - entity: sensor.wlanthermo_channel_1
-              - entity: sensor.wlanthermo_channel_2
-      - type: conditional
-        conditions:
-          - entity: sensor.wlanthermo_channel_1
-            state_not: '0'
-          - entity: sensor.wlanthermo_channel_1
-            state_not: unavailable
-        card:
-          type: vertical-stack
-          cards:
-            - type: gauge
-              entity: sensor.wlanthermo_channel_1
-              min: 0
-              max: 250
-              severity:
-                green: 90
-                yellow: 115
-                red: 200
-            - type: entities
-              entities:
-                - entity: input_number.wlanthermo_channel_1_min
-                - entity: input_number.wlanthermo_channel_1_max
-      - type: conditional
-        conditions:
-          - entity: sensor.wlanthermo_channel_2
-            state_not: '0'
-          - entity: sensor.wlanthermo_channel_2
-            state_not: unavailable
-        card:
-          type: vertical-stack
-          cards:
-            - type: gauge
-              entity: sensor.wlanthermo_channel_2
-              min: 0
-              max: 100
-              severity:
-                green: 0
-                yellow: 0
-                red: 0
-            - type: entities
-              entities:
-                - entity: input_number.wlanthermo_channel_2_min
-                - entity: input_number.wlanthermo_channel_2_max
+theme: Backend-selected
+title: BBQ
+path: bbq
+icon: mdi:pig
+badges: []
+cards:
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.wlanthermo
+        state_not: unavailable
+    card:
+      type: vertical-stack
+      cards:
+        - type: gauge
+          entity: sensor.bbq_kanal_1_temperatur
+          min: 0
+          max: 350
+          severity:
+            green: 90
+            yellow: 115
+            red: 200
+          name: BBQ Kanal 1
+        - type: entities
+          entities:
+            - entity: input_number.wlanthermo_channel_1_min
+            - entity: input_number.wlanthermo_channel_1_max
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.wlanthermo
+        state_not: unavailable
+    card:
+      type: vertical-stack
+      cards:
+        - type: gauge
+          entity: sensor.bbq_kanal_2_temperatur
+          min: 0
+          max: 350
+          severity:
+            green: 0
+            yellow: 0
+            red: 0
+          name: BBQ Kanal 2
+        - type: entities
+          entities:
+            - entity: input_number.wlanthermo_channel_2_min
+            - entity: input_number.wlanthermo_channel_2_max
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.wlanthermo
+        state_not: unavailable
+    card:
+      type: history-graph
+      title: BBQ Temperaturverlauf
+      entities:
+        - entity: sensor.bbq_kanal_1_temperatur
+        - entity: sensor.bbq_kanal_2_temperatur
+      hours_to_show: 4
 ```
