@@ -1,5 +1,11 @@
 # WLANThermo for Home Assistant
 
+---
+
+Discontinued due to availablity of [HACS repo](https://github.com/WLANThermo-nano/homeassistant)
+
+---
+
 The WLANThermo bbq thermometer (https://wlanthermo.de/) uses a local wifi and optional MQTT server to push the temperature changes to.
 
 ## Setup MQTT in WLANThermo
